@@ -745,6 +745,62 @@ input[type="color"] {
   accent-color: var(--accent);
   cursor: pointer;
 }
+
+/* ---------- Sincronización en tiempo real con Código de Pareja ---------- */
+.sync-card {
+  border: 2px dashed var(--accent);
+  background: color-mix(in srgb, var(--accent) 5%, var(--surface));
+}
+.sync-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.sync-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 99px;
+}
+.sync-pill.on {
+  background: rgba(52, 199, 89, 0.15);
+  color: var(--green);
+}
+.sync-pill.wait {
+  background: rgba(255, 149, 0, 0.15);
+  color: var(--orange);
+}
+.sync-pill.off {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.pair-code-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  padding: 12px 16px;
+  border-radius: 14px;
+  margin: 12px 0;
+}
+.pair-code-text {
+  font-family: monospace;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+}
+.pair-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 .bio-divider {
   display: flex;
   align-items: center;

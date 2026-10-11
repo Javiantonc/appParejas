@@ -469,6 +469,10 @@
 
   applyTheme();
 
+  if (App.sync && App.sync.init) {
+    App.sync.init();
+  }
+
   if (isLoggedIn && store.state.user && store.state.user.name) {
     draw(true);
   } else {

@@ -38,6 +38,42 @@
           <button class="btn primary" type="submit">Guardar cambios</button>
         </form>
 
+        <div class="card sync-card">
+          <div class="sync-header">
+            <div>
+              <h2>💞 Conexión en Pareja</h2>
+              <p class="muted">Conecta tu móvil con el de tu pareja para ver y añadir cosas juntos en tiempo real.</p>
+            </div>
+            <span id="sync-status-badge" class="sync-pill ${App.sync && App.sync.connected ? 'on' : (App.sync && App.sync.pairCode ? 'wait' : 'off')}">
+              ${App.sync && App.sync.connected ? `🟢 Conectado (${App.sync.pairCode})` : (App.sync && App.sync.pairCode ? `🟡 Conectando (${App.sync.pairCode})...` : '⚪ Sin vincular')}
+            </span>
+          </div>
+
+          ${S.settings.pairCode ? `
+            <div class="pair-code-box">
+              <div style="flex:1">
+                <span class="fl" style="font-size:12px">Vuestro Código de Pareja:</span>
+                <div class="pair-code-text" id="display-pair-code">${esc(S.settings.pairCode)}</div>
+              </div>
+              <button class="btn" type="button" id="btn-copy-code">${icon('share', 16)} Copiar</button>
+            </div>
+            <p class="muted" style="font-size:13px">Dile a tu pareja que ponga este mismo código en su aplicación para estar sincronizados.</p>
+            <div class="pair-actions" style="margin-top:10px">
+              <button class="btn" type="button" id="btn-sync-now">🔄 Sincronizar ahora</button>
+              <button class="btn danger" type="button" id="btn-unlink-code">Desvincular</button>
+            </div>
+          ` : `
+            <div style="display:flex;flex-direction:column;gap:12px;margin-top:10px">
+              <button class="btn primary" type="button" id="btn-generate-code">✨ Generar mi Código de Pareja</button>
+              <div style="text-align:center;font-size:12px;color:var(--muted);font-weight:600">O SI TU PAREJA YA TIENE UN CÓDIGO</div>
+              <div style="display:flex;gap:8px">
+                <input type="text" id="input-pair-code" placeholder="Ej: AMOR-8492" maxlength="12" style="text-transform:uppercase;font-weight:700;letter-spacing:0.05em">
+                <button class="btn" type="button" id="btn-join-code">Unirme</button>
+              </div>
+            </div>
+          `}
+        </div>
+
         <div class="card form">
           <h2>Datos</h2>
           <p class="muted">Todo se guarda en este navegador. Descarga una copia de seguridad (incluye las fotos) para no perder nada o llevarla a otro dispositivo.</p>
@@ -58,6 +94,72 @@
     let lastInput = null;
     el.querySelectorAll('input[name^=emoji]').forEach(i => i.addEventListener('focus', () => { lastInput = i; }));
     el.querySelectorAll('[data-e]').forEach(b => b.onclick = () => { (lastInput || el.querySelector('input[name=emoji0]')).value = b.dataset.e; });
+
+    // Botones de Sincronización en Pareja
+    const btnGen = el.querySelector('#btn-generate-code');
+    if (btnGen) {
+      btnGen.onclick = () => {
+        const words = ['AMOR', 'VIDA', 'CORAZON', 'SOL', 'LUNA', 'JUNTOS', 'PAREJA'];
+        const word = words[Math.floor(Math.random() * words.length)];
+        const num = Math.floor(1000 + Math.random() * 9000);
+        const code = `${word}-${num}`;
+        store.setPairCode(code);
+        App.sync && App.sync.connect(code);
+        App.refresh();
+        ui.toast(`¡Código creado: ${code}! Compártelo con tu pareja 💞`);
+      };
+    }
+
+    const btnJoin = el.querySelector('#btn-join-code');
+    if (btnJoin) {
+      btnJoin.onclick = () => {
+        const inp = el.querySelector('#input-pair-code');
+        const code = (inp ? inp.value : '').trim().toUpperCase();
+        if (!code || code.length < 4) {
+          ui.toast('Introduce un código de pareja válido.', 'error');
+          return;
+        }
+        store.setPairCode(code);
+        App.sync && App.sync.connect(code);
+        App.refresh();
+        ui.toast(`¡Conectado al código ${code}! Esperando sincronización... ✨`);
+      };
+    }
+
+    const btnCopy = el.querySelector('#btn-copy-code');
+    if (btnCopy) {
+      btnCopy.onclick = async () => {
+        const code = S.settings.pairCode;
+        if (navigator.clipboard) {
+          await navigator.clipboard.writeText(code);
+          ui.toast('¡Código copiado al portapapeles! 📋');
+        } else {
+          ui.toast(`Código: ${code}`);
+        }
+      };
+    }
+
+    const btnSyncNow = el.querySelector('#btn-sync-now');
+    if (btnSyncNow) {
+      btnSyncNow.onclick = () => {
+        if (App.sync) {
+          App.sync.broadcast();
+          ui.toast('Datos enviados a tu pareja 🚀');
+        }
+      };
+    }
+
+    const btnUnlink = el.querySelector('#btn-unlink-code');
+    if (btnUnlink) {
+      btnUnlink.onclick = async () => {
+        if (await ui.confirmBox('¿Desvincular este dispositivo de tu pareja? Los datos actuales se mantendrán en tu teléfono.', 'Desvincular')) {
+          App.sync && App.sync.disconnect();
+          store.setPairCode('');
+          App.refresh();
+          ui.toast('Dispositivo desvinculado.');
+        }
+      };
+    }
 
     el.querySelector('[data-form]').onsubmit = e => {
       e.preventDefault();

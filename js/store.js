@@ -107,6 +107,7 @@
     settings: {
       theme: "light",
       coupleName: "Nosotros",
+      pairCode: "", // Código de Pareja (ej: AMOR-7492)
       partners: [
         { id: "a", name: "Yo", color: "#ff4d7d", emoji: "🦊" },
         { id: "b", name: "Pareja", color: "#0a84ff", emoji: "🐼" },
@@ -318,9 +319,12 @@
     uid,
     state: load(),
 
-    save() {
+    save(skipBroadcast) {
       try {
         localStorage.setItem(KEY, JSON.stringify(store.state));
+        if (!skipBroadcast && App.sync && App.sync.broadcast) {
+          App.sync.broadcast();
+        }
         return true;
       } catch (e) {
         App.ui &&
@@ -329,6 +333,49 @@
             "error",
           );
         return false;
+      }
+    },
+    getPairCode() {
+      return store.state.settings.pairCode || localStorage.getItem('nosotros_pair_code') || '';
+    },
+    setPairCode(code) {
+      store.state.settings.pairCode = code;
+      if (code) {
+        localStorage.setItem('nosotros_pair_code', code);
+      } else {
+        localStorage.removeItem('nosotros_pair_code');
+      }
+      store.save(true);
+    },
+    mergeRemote(payload, sender) {
+      if (!payload) return;
+      let changed = false;
+      if (Array.isArray(payload.tasks)) {
+        store.state.tasks = payload.tasks;
+        changed = true;
+      }
+      if (Array.isArray(payload.plans)) {
+        store.state.plans = payload.plans;
+        changed = true;
+      }
+      if (Array.isArray(payload.meals)) {
+        store.state.meals = payload.meals;
+        changed = true;
+      }
+      if (payload.coupleName) {
+        store.state.settings.coupleName = payload.coupleName;
+        changed = true;
+      }
+      if (payload.partnerA && payload.partnerB) {
+        store.state.settings.partners = [payload.partnerA, payload.partnerB];
+        changed = true;
+      }
+      if (changed) {
+        store.save(true);
+        App.refresh && App.refresh();
+        if (sender && App.ui) {
+          App.ui.toast(`Sincronizado con ${sender} 💞`);
+        }
       }
     },
     replace(s) {
