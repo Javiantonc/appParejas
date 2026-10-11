@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="es" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#f5f5f7" />
+    <title>Nosotros · Organización para parejas</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💞</text></svg>"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Nosotros" />
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%23ff4d7d%22/><text y=%22.75em%22 x=%2250%25%22 text-anchor=%22middle%22 font-size=%2260%22>💞</text></svg>" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="mobile-header" id="mobile-header"></header>
+    <div class="app">
+      <aside class="sidebar" id="sidebar"></aside>
+      <main id="main" class="main"></main>
+    </div>
+    <nav class="tabbar" id="tabbar"></nav>
+
+    <div id="auth-root"></div>
+    <div id="loader-root"></div>
+    <div id="overlay-root"></div>
+    <div id="toast-root"></div>
+
+    <!-- Orden importa: core primero, después vistas, al final el arranque -->
+    <script src="js/store.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/forms.js"></script>
+    <script src="js/views/dashboard.js"></script>
+    <script src="js/views/calendar.js"></script>
+    <script src="js/views/tasks.js"></script>
+    <script src="js/views/plans.js"></script>
+    <script src="js/views/meals.js"></script>
+    <script src="js/views/settings.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>
