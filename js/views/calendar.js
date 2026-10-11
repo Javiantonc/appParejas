@@ -224,7 +224,6 @@
       scrollTop = null;
       App.refresh();
     };
-    el.querySelector("[data-add]").onclick = () => App.forms.quickAdd(cursor);
     el.querySelectorAll("[data-f]").forEach(
       (b) =>
         (b.onclick = () => {
@@ -234,6 +233,15 @@
     );
 
     /* Interacción con el calendario */
+    const addBtn = el.querySelector("[data-add]");
+    if (addBtn) {
+      addBtn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        App.forms.quickAdd(cursor);
+      };
+    }
+
     body.addEventListener("click", (e) => {
       const ev = e.target.closest("[data-kind]");
       if (ev) {
@@ -243,15 +251,14 @@
       const head = e.target.closest(".ch");
       if (head) {
         cursor = head.dataset.day;
-        mode = "day";
-        return App.refresh();
+        App.forms.quickAdd(cursor);
+        return;
       }
       const md = e.target.closest(".mday");
       if (md) {
         cursor = md.dataset.date;
-        mode = "day";
-        scrollTop = null;
-        return App.refresh();
+        App.forms.quickAdd(cursor);
+        return;
       }
       const col = e.target.closest(".col");
       if (col) {

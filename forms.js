@@ -205,10 +205,22 @@
   }
 
   /* ---------------- Añadir rápido y abrir evento ---------------- */
+  function openEvent(kind, id) {
+    if (kind === 'task') {
+      const t = store.get('tasks', id);
+      if (t) task(t);
+    } else if (kind === 'plan') {
+      planDetail(id);
+    } else if (kind === 'meal') {
+      const m = store.get('meals', id);
+      if (m) meal(m);
+    }
+  }
+
   function quickAdd(date, time) {
     date = date || dt.today();
     ui.modal({
-      title: 'Añadir', size: 'sm',
+      title: 'Añadir al día', size: 'sm',
       html: `<p class="muted" style="margin-bottom:14px">${esc(ui.when(date, time, 60))}</p>
         <div class="quick">
           <button data-k="task"><span>✅</span>Tarea</button>
