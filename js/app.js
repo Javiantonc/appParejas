@@ -30,7 +30,13 @@
     } else {
       isDark = false;
     }
-    document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
+    const themeName = isDark ? 'dark' : 'light';
+    document.documentElement.dataset.theme = themeName;
+    document.documentElement.setAttribute('data-theme', themeName);
+    if (document.body) {
+      document.body.dataset.theme = themeName;
+      document.body.setAttribute('data-theme', themeName);
+    }
     const m = document.querySelector('meta[name=theme-color]');
     if (m) m.content = isDark ? '#000000' : '#f5f5f7';
   }

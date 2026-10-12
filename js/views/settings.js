@@ -163,12 +163,20 @@
 
     // Cambiar tema de inmediato al pulsar cualquiera de los botones (Auto, Claro, Oscuro)
     el.querySelectorAll('input[name=theme]').forEach(r => {
-      r.addEventListener('change', () => {
+      const applySelectedTheme = () => {
         S.settings.theme = r.value;
         store.save();
         App.applyTheme();
         App.refresh();
-      });
+      };
+      r.addEventListener('change', applySelectedTheme);
+      r.addEventListener('click', applySelectedTheme);
+      const label = r.closest('label');
+      if (label) {
+        label.addEventListener('click', () => {
+          setTimeout(applySelectedTheme, 10);
+        });
+      }
     });
 
     el.querySelector('[data-form]').onsubmit = e => {
