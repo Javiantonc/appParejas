@@ -161,6 +161,16 @@
       };
     }
 
+    // Cambiar tema de inmediato al pulsar cualquiera de los botones (Auto, Claro, Oscuro)
+    el.querySelectorAll('input[name=theme]').forEach(r => {
+      r.addEventListener('change', () => {
+        S.settings.theme = r.value;
+        store.save();
+        App.applyTheme();
+        App.refresh();
+      });
+    });
+
     el.querySelector('[data-form]').onsubmit = e => {
       e.preventDefault();
       const f = new FormData(e.target);

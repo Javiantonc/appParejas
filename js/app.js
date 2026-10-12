@@ -21,8 +21,15 @@
   };
 
   function applyTheme() {
-    const t = store.state.settings.theme;
-    const isDark = t === 'dark';
+    const t = store.state.settings.theme || 'light';
+    let isDark = false;
+    if (t === 'dark') {
+      isDark = true;
+    } else if (t === 'auto') {
+      isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } else {
+      isDark = false;
+    }
     document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
     const m = document.querySelector('meta[name=theme-color]');
     if (m) m.content = isDark ? '#000000' : '#f5f5f7';
