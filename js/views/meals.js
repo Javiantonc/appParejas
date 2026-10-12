@@ -33,12 +33,15 @@
             <header><b>${esc(new Intl.DateTimeFormat('es-ES', { weekday: 'long' }).format(D))}</b><span>${D.getDate()} ${esc(new Intl.DateTimeFormat('es-ES', { month: 'short' }).format(D).replace('.', ''))}</span></header>
             ${Object.entries(MEALS).map(([type, mt]) => {
               const list = meals.filter(m => m.date === d && m.type === type);
-              return `<div class="slot">
-                <div class="slot-h"><span>${mt.emoji} ${mt.label}</span><button class="icon-btn" data-add="${d}|${type}" aria-label="Añadir ${mt.label}">${icon('plus', 14)}</button></div>
+              return `<div class="slot" data-slot="${d}|${type}">
+                <div class="slot-h">
+                  <span>${mt.emoji} ${mt.label}</span>
+                  <button type="button" class="icon-btn" data-add="${d}|${type}" aria-label="Añadir ${mt.label}">${icon('plus', 14)}</button>
+                </div>
                 ${list.length ? list.map(m => `<div class="meal" data-id="${m.id}">
                     <div class="th" ${m.photo ? `style="background-image:url('${m.photo}')"` : ''}>${m.photo ? '' : mt.emoji}</div>
                     <div style="flex:1;min-width:0"><b>${esc(m.title)}</b><small>${m.time || mt.time}</small></div>${avatar(m.cook, 22)}</div>`).join('')
-                  : `<div class="slot-empty">—</div>`}
+                  : `<div class="slot-empty" data-add="${d}|${type}">+ Añadir ${esc(mt.label).toLowerCase()}</div>`}
               </div>`;
             }).join('')}
           </div>`;
@@ -46,14 +49,45 @@
       </div>
     </div>`;
 
-    el.querySelectorAll('[data-nav]').forEach(b => b.onclick = () => { weekStart = dt.addDays(weekStart, 7 * +b.dataset.nav); App.refresh(); });
-    el.querySelector('[data-today]').onclick = () => { weekStart = dt.startOfWeek(today); App.refresh(); };
-    el.querySelector('[data-new]').onclick = () => App.forms.meal(null, { date: days.includes(today) ? today : days[0] });
-    el.querySelectorAll('[data-add]').forEach(b => b.onclick = () => {
-      const [date, type] = b.dataset.add.split('|');
-      App.forms.meal(null, { date, type, time: MEALS[type].time });
+    el.querySelectorAll('[data-nav]').forEach(b => b.onclick = (e) => {
+      e.preventDefault();
+      weekStart = dt.addDays(weekStart, 7 * +b.dataset.nav);
+      App.refresh();
     });
-    el.querySelectorAll('.meal').forEach(m => m.onclick = () => App.forms.openEvent('meal', m.dataset.id));
+
+    const todayBtn = el.querySelector('[data-today]');
+    if (todayBtn) {
+      todayBtn.onclick = (e) => {
+        e.preventDefault();
+        weekStart = dt.startOfWeek(today);
+        App.refresh();
+      };
+    }
+
+    const newBtn = el.querySelector('[data-new]');
+    if (newBtn) {
+      newBtn.onclick = (e) => {
+        e.preventDefault();
+        App.forms.meal(null, { date: days.includes(today) ? today : days[0] });
+      };
+    }
+
+    el.querySelectorAll('[data-add]').forEach(b => {
+      b.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const [date, type] = b.dataset.add.split('|');
+        App.forms.meal(null, { date, type, time: (MEALS[type] && MEALS[type].time) || '14:00' });
+      };
+    });
+
+    el.querySelectorAll('.meal').forEach(m => {
+      m.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        App.forms.openEvent('meal', m.dataset.id);
+      };
+    });
   }
 
   App.views.comidas = { render };
