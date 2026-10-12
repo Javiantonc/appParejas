@@ -179,10 +179,12 @@
             screen.style.opacity = '0';
             setTimeout(() => {
               root.innerHTML = '';
+              root.style.display = 'none';
               callback && callback();
             }, 500);
           } else {
             root.innerHTML = '';
+            root.style.display = 'none';
             callback && callback();
           }
         }, 300);
@@ -355,6 +357,7 @@
       const proceedIntoApp = () => {
         sessionStorage.setItem('nosotros_logged_in', 'true');
         root.innerHTML = '';
+        root.style.display = 'none';
         showRomanticLoader(() => {
           applyTheme();
           draw(true);
@@ -487,6 +490,10 @@
   }
 
   if (isLoggedIn && store.state.user && store.state.user.name) {
+    const authRoot = document.getElementById('auth-root');
+    if (authRoot) { authRoot.innerHTML = ''; authRoot.style.display = 'none'; }
+    const loaderRoot = document.getElementById('loader-root');
+    if (loaderRoot) { loaderRoot.innerHTML = ''; loaderRoot.style.display = 'none'; }
     draw(true);
   } else {
     showAuthScreen();
