@@ -11,12 +11,14 @@
   let filter = 'all';
 
   function card(p) {
-    const st = PLAN_STATUS[p.status], photo = p.photos[0];
+    const st = PLAN_STATUS[p.status] || PLAN_STATUS.planned;
+    const typeInfo = (store.PLAN_TYPES && store.PLAN_TYPES[p.type]) || store.PLAN_TYPES.date;
+    const photo = p.photos && p.photos[0];
     return `<article class="plan" data-id="${p.id}">
       <div class="cover ${photo ? '' : ui.gradient(p.id)}" ${photo ? `style="background-image:url('${photo}')"` : ''}>
-        ${photo ? '' : st.emoji}
-        <span class="badge tag" style="--c:${st.color};background:var(--surface)">${st.emoji} ${st.label}</span>
-        ${p.photos.length ? `<span class="cnt">${icon('image', 13)} ${p.photos.length}</span>` : ''}
+        ${photo ? '' : typeInfo.emoji}
+        <span class="badge tag" style="--c:${typeInfo.color};background:var(--surface)">${typeInfo.emoji} ${typeInfo.label}</span>
+        ${p.photos && p.photos.length ? `<span class="cnt">${icon('image', 13)} ${p.photos.length}</span>` : ''}
       </div>
       <div class="pb">
         <h3>${esc(p.title)}</h3>
@@ -42,21 +44,21 @@
     const done = all.filter(p => p.status === 'done').sort((a, b) => cmp(b, a));
     const show = k => filter === 'all' || filter === k;
 
-    const html = (show('planned') ? section('Próximos planes', planned) : '')
+    const html = (show('planned') ? section('Próximos planes y eventos', planned) : '')
       + (show('idea') ? section('Ideas', ideas) : '')
-      + (show('done') ? section('Recuerdos', done) : '');
+      + (show('done') ? section('Recuerdos y momentos pasados', done) : '');
 
     el.innerHTML = `<div class="page">
       <div class="page-head">
-        <div><h1>Planes</h1><p>Citas, escapadas y recuerdos. Guardad las fotos de cada momento.</p></div>
+        <div><h1>Planes &amp; Celebraciones</h1><p>Citas, cumpleaños, bodas, comuniones, viajes y momentos para recordar.</p></div>
         <span class="grow"></span>
-        <button class="btn primary" data-new>${icon('plus', 16)} Nuevo plan</button>
+        <button class="btn primary" data-new>${icon('plus', 16)} Nuevo plan o evento</button>
       </div>
-      <div class="toolbar chips">
+      <div class="toolbar chips" style="overflow-x:auto;padding-bottom:4px">
         <button class="chip ${filter === 'all' ? 'on' : ''}" data-f="all">Todos · ${all.length}</button>
         ${Object.entries(PLAN_STATUS).map(([k, s]) => `<button class="chip ${filter === k ? 'on' : ''}" data-f="${k}">${s.emoji} ${s.label}s</button>`).join('')}
       </div>
-      ${html || `<div class="empty card"><div class="big">💞</div><b>Todavía no hay planes</b><p>Empezad con una idea: una cena, una escapada o una noche de pelis.</p></div>`}
+      ${html || `<div class="empty card"><div class="big">🎂 🎉 👰</div><b>Todavía no hay planes o celebraciones</b><p>Añadid un cumpleaños, una boda, una cita romántica o vuestro próximo viaje.</p></div>`}
     </div>`;
 
     const newBtn = el.querySelector('[data-new]');

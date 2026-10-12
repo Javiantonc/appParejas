@@ -89,6 +89,20 @@
     planned: { label: "Planeado", emoji: "📅", color: "#0a84ff" },
     done: { label: "Hecho", emoji: "✅", color: "#34c759" },
   };
+
+  const PLAN_TYPES = {
+    date: { label: "Cita Romántica", emoji: "💞", color: "#ff4d7d" },
+    birthday: { label: "Cumpleaños", emoji: "🎂", color: "#ff9500" },
+    wedding: { label: "Boda", emoji: "👰🤵", color: "#bf5af2" },
+    communion: { label: "Comunión", emoji: "🕊️", color: "#0a84ff" },
+    baptism: { label: "Bautizo", emoji: "👶", color: "#34c759" },
+    anniversary: { label: "Aniversario", emoji: "💍", color: "#ff2d55" },
+    trip: { label: "Viaje / Escapada", emoji: "✈️", color: "#5856d6" },
+    party: { label: "Fiesta / Celebración", emoji: "🎉", color: "#ffcc00" },
+    concert: { label: "Concierto / Festival", emoji: "🎵", color: "#af52de" },
+    dinner: { label: "Cena Especial", emoji: "🍷", color: "#ff3b30" },
+    other: { label: "Otro Plan", emoji: "✨", color: "#64d2ff" },
+  };
   const PRIO = { low: "Baja", med: "Media", high: "Alta" };
   const REPEAT = {
     none: "No se repite",
@@ -327,6 +341,7 @@
     CATS,
     MEALS,
     PLAN_STATUS,
+    PLAN_TYPES,
     REMINDER_CATS,
     PRIO,
     REPEAT,
@@ -487,6 +502,7 @@
       S.plans.forEach((p) => {
         if (p.date !== iso) return;
         const s = toMin(p.time);
+        const typeInfo = PLAN_TYPES[p.type] || PLAN_TYPES.date;
         out.push({
           kind: "plan",
           id: p.id,
@@ -495,9 +511,9 @@
           allDay: s == null,
           start: s ?? 0,
           end: s == null ? 0 : Math.min(1440, s + (p.duration || 120)),
-          color: KIND_COLOR.plan,
-          sub: p.place || "Plan",
-          emoji: "💞",
+          color: typeInfo.color || KIND_COLOR.plan,
+          sub: p.place ? `${typeInfo.label} · ${p.place}` : typeInfo.label,
+          emoji: typeInfo.emoji || "💞",
         });
       });
       S.meals.forEach((m) => {

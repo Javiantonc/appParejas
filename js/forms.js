@@ -67,22 +67,39 @@
   /* ---------------- PLAN ---------------- */
   function plan(p, pre) {
     const isNew = !p;
-    const d = Object.assign({ title: '', status: 'planned', date: '', time: '', duration: 120, place: '', description: '', photos: [], rating: 0 }, p || pre || {});
+    const d = Object.assign({
+      title: '',
+      type: 'date',
+      status: 'planned',
+      date: '',
+      time: '',
+      duration: 120,
+      place: '',
+      description: '',
+      photos: [],
+      rating: 0
+    }, p || pre || {});
+
     const photos = [...(d.photos || [])];
+    const typeOpts = Object.entries(store.PLAN_TYPES || {}).map(([k, t]) => [k, `${t.emoji} ${t.label}`]);
+
     ui.modal({
-      title: isNew ? 'Nuevo plan' : 'Editar plan', size: 'lg',
+      title: isNew ? 'Nuevo plan o celebración 🎉' : 'Editar plan o celebración', size: 'lg',
       html: `<form class="form" autocomplete="off">
-        <input class="big-input" name="title" placeholder="¿Qué plan tenéis en mente?" value="${esc(d.title)}" required>
-        ${field('Estado', seg('status', Object.entries(PLAN_STATUS).map(([k, s]) => ({ v: k, label: `${s.emoji} ${s.label}` })), d.status))}
+        <input class="big-input" name="title" placeholder="¿Qué tenéis en mente? (ej: Boda de Laura & Carlos, Cumpleaños, Escapada…)" value="${esc(d.title)}" required>
+        <div class="row2">
+          ${field('Tipo de Evento / Celebración', select('type', typeOpts, d.type || 'date'))}
+          ${field('Estado', seg('status', Object.entries(PLAN_STATUS).map(([k, s]) => ({ v: k, label: `${s.emoji} ${s.label}` })), d.status))}
+        </div>
         <div class="row2">
           ${field('Fecha', `<input type="date" name="date" value="${d.date || ''}">`)}
           ${field('Hora', `<input type="time" name="time" value="${d.time || ''}">`)}
         </div>
         <div class="row2">
           ${field('Duración', select('duration', [[60, '1 h'], [120, '2 h'], [180, '3 h'], [240, '4 h'], [480, 'Todo el día']], d.duration))}
-          ${field('Lugar', `<input type="text" name="place" placeholder="Restaurante, ciudad…" value="${esc(d.place)}">`)}
+          ${field('Lugar / Restaurante / Iglesia / Salón', `<input type="text" name="place" placeholder="Ej: Finca Las Palmeras, Parroquia, Casa…" value="${esc(d.place)}">`)}
         </div>
-        ${field('Descripción', `<textarea name="description" rows="3" placeholder="Ideas, reservas, cosas que llevar…">${esc(d.description)}</textarea>`)}
+        ${field('Descripción / Qué llevar / Notas del evento', `<textarea name="notes" rows="3" placeholder="Detalles: regalo, código de vestimenta, reservas, horarios…">${esc(d.description)}</textarea>`)}
         ${field('Valoración (si ya lo hicisteis)', select('rating', [[0, 'Sin valorar'], [1, '❤'], [2, '❤❤'], [3, '❤❤❤'], [4, '❤❤❤❤'], [5, '❤❤❤❤❤']], d.rating))}
         ${field('Fotos', `<label class="drop" data-drop>${icon('image', 26)}<b>Añadir fotos</b><small>Toca o arrastra imágenes aquí</small><input type="file" accept="image/*" multiple hidden></label><div class="photo-grid" data-photos></div>`)}
         <div class="form-actions">
@@ -112,12 +129,20 @@
           e.preventDefault();
           const f = new FormData(form);
           const data = {
-            title: f.get('title').trim(), status: f.get('status'), date: f.get('date') || '', time: f.get('time') || '',
-            duration: +f.get('duration'), place: f.get('place').trim(), description: f.get('description').trim(), rating: +f.get('rating'), photos: [...photos],
+            title: f.get('title').trim(),
+            type: f.get('type') || 'date',
+            status: f.get('status'),
+            date: f.get('date') || '',
+            time: f.get('time') || '',
+            duration: +f.get('duration'),
+            place: f.get('place').trim(),
+            description: (f.get('notes') || f.get('description') || '').trim(),
+            rating: +f.get('rating'),
+            photos: [...photos],
           };
           if (!data.title) return;
           if (isNew) store.add('plans', data); else store.update('plans', p.id, data);
-          close(); done(isNew ? 'Plan añadido 💞' : 'Plan actualizado');
+          close(); done(isNew ? 'Plan / Evento añadido 🎉' : 'Plan actualizado');
         };
       },
     });
@@ -126,13 +151,17 @@
   function planDetail(id) {
     const p = store.get('plans', id); if (!p) return;
     const st = PLAN_STATUS[p.status];
+    const typeInfo = (store.PLAN_TYPES && store.PLAN_TYPES[p.type]) || store.PLAN_TYPES.date;
     const gallery = p.photos.length ? `
       <img class="gallery-main" src="${p.photos[0]}" alt="" data-ph="0">
       ${p.photos.length > 1 ? `<div class="gallery-th">${p.photos.slice(1).map((s, i) => `<img src="${s}" alt="" data-ph="${i + 1}">`).join('')}</div>` : ''}` : '';
     ui.modal({
       title: p.title, size: 'lg',
       html: `${gallery}
-        <span class="badge" style="--c:${st.color}">${st.emoji} ${st.label}</span>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+          <span class="badge" style="--c:${typeInfo.color};background:var(--surface-2);color:var(--text);font-weight:700">${typeInfo.emoji} ${typeInfo.label}</span>
+          <span class="badge" style="--c:${st.color}">${st.emoji} ${st.label}</span>
+        </div>
         <div class="detail-meta">
           <div>${icon('calendar', 16)} ${esc(ui.when(p.date, p.time, p.duration))}</div>
           ${p.place ? `<div>${icon('pin', 16)} ${esc(p.place)}</div>` : ''}
