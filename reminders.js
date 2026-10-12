@@ -17,7 +17,11 @@
         <div class="ticket-strip">
           <span class="ticket-cat-icon">${cat.emoji}</span>
           <span class="ticket-cat-name">${cat.label}</span>
-          ${r.date ? `<span class="ticket-date-pill">${esc(dt.rel(r.date))}${r.time ? ' · ' + r.time : ''}</span>` : '<span class="ticket-date-pill">Sin fecha</span>'}
+          ${r.date ? `
+            <span class="ticket-date-pill" data-cal="${r.date}" title="Ver este día en el Calendario" style="cursor:pointer">
+              ${icon('calendar', 13)} ${esc(dt.rel(r.date))}${r.time ? ' · ' + r.time : ''}
+            </span>
+          ` : '<span class="ticket-date-pill">Sin fecha</span>'}
         </div>
 
         <div class="ticket-main">
@@ -112,9 +116,20 @@
       };
     });
 
-    // Clic en la tarjeta para editar
+    // Clic en la tarjeta para editar o en data-cal para ir al calendario
     el.querySelectorAll('.ticket-card').forEach(card => {
       card.onclick = (e) => {
+        if (e.target.closest('[data-cal]')) {
+          e.stopPropagation();
+          const targetDate = e.target.closest('[data-cal]').dataset.cal;
+          location.hash = '#/calendario';
+          setTimeout(() => {
+            if (App.views.calendario && App.views.calendario.setCursor) {
+              App.views.calendario.setCursor(targetDate);
+            }
+          }, 50);
+          return;
+        }
         if (e.target.closest('[data-zoom]')) {
           e.stopPropagation();
           const r = store.get('reminders', card.dataset.id);

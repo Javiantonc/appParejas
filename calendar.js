@@ -291,5 +291,11 @@
     }, 60000);
   }
 
-  App.views.calendario = { render };
+  App.views.calendario = {
+    render,
+    setCursor(date) {
+      cursor = date;
+      App.refresh();
+    }
+  };
 })();
