@@ -81,6 +81,15 @@
       };
     });
 
+    el.querySelectorAll('.slot').forEach(s => {
+      s.onclick = (e) => {
+        if (e.target.closest('.meal') || e.target.closest('[data-add]')) return;
+        e.preventDefault();
+        const [date, type] = s.dataset.slot.split('|');
+        App.forms.meal(null, { date, type, time: (MEALS[type] && MEALS[type].time) || '14:00' });
+      };
+    });
+
     el.querySelectorAll('.meal').forEach(m => {
       m.onclick = (e) => {
         e.preventDefault();

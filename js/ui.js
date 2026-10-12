@@ -189,7 +189,8 @@
   }
 
   /** Reduce una imagen a ~1100px y la devuelve como dataURL JPEG (ahorra espacio en localStorage). */
-  function compress(file, max = 1100, q = 0.8) {
+  /** Reduce una imagen a ~800px y la devuelve como dataURL JPEG comprimido (ahorra espacio en localStorage). */
+  function compress(file, max = 800, q = 0.65) {
     return new Promise((res, rej) => {
       const r = new FileReader();
       r.onerror = rej;
@@ -201,7 +202,8 @@
           const c = document.createElement("canvas");
           c.width = Math.round(img.width * k);
           c.height = Math.round(img.height * k);
-          c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+          const ctx = c.getContext("2d");
+          ctx.drawImage(img, 0, 0, c.width, c.height);
           res(c.toDataURL("image/jpeg", q));
         };
         img.src = r.result;

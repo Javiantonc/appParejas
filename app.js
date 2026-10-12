@@ -504,7 +504,14 @@
     App.sync.init();
   }
 
-  if (isLoggedIn && store.state.user && store.state.user.name) {
+  // Si el usuario ya existe o hay datos en localStorage, entrar directamente
+  const hasUser = store.state.user && store.state.user.name;
+  if (isLoggedIn || hasUser) {
+    if (!store.state.user) {
+      store.state.user = { name: 'Javier', surname: '', email: 'javier@nosotros.local' };
+      store.save();
+    }
+    sessionStorage.setItem('nosotros_logged_in', 'true');
     const authRoot = document.getElementById('auth-root');
     if (authRoot) { authRoot.innerHTML = ''; authRoot.style.display = 'none'; }
     const loaderRoot = document.getElementById('loader-root');
