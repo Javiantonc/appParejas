@@ -106,7 +106,7 @@
     const allday = days
       .map(
         (d, i) =>
-          `<div class="ad">${evs[i]
+          `<div class="ad" data-date="${d}">${evs[i]
             .filter((e) => e.allDay)
             .map(pill)
             .join("")}</div>`,
@@ -260,6 +260,13 @@
       if (md) {
         e.preventDefault();
         cursor = md.dataset.date;
+        App.forms.quickAdd(cursor);
+        return;
+      }
+      const ad = e.target.closest(".ad");
+      if (ad && ad.dataset.date) {
+        e.preventDefault();
+        cursor = ad.dataset.date;
         App.forms.quickAdd(cursor);
         return;
       }

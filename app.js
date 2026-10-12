@@ -159,9 +159,9 @@
       }
     }, 2000);
 
-    // Animación de la barra de progreso a la mitad de velocidad (duración ~6.8s)
+    // Animación de la barra de progreso fluida (duración ~1.2s)
     const startTime = Date.now();
-    const duration = 6800;
+    const duration = 1200;
 
     const progressTimer = setInterval(() => {
       const elapsed = Date.now() - startTime;
@@ -181,15 +181,15 @@
               root.innerHTML = '';
               root.style.display = 'none';
               callback && callback();
-            }, 500);
+            }, 300);
           } else {
             root.innerHTML = '';
             root.style.display = 'none';
             callback && callback();
           }
-        }, 300);
+        }, 150);
       }
-    }, 40);
+    }, 25);
   }
 
   /* ---------- Desbloqueo Facial por Cámara (Face Scan) ---------- */
@@ -340,6 +340,9 @@
                 <button type="button" class="bio-btn" id="btn-camera-id">
                   ${icon('image', 20)} Reconocimiento por Cámara 📷
                 </button>
+                <button type="button" class="bio-btn" id="btn-guest-enter" style="background:var(--accent-soft);color:var(--accent);border-color:var(--accent)">
+                  ${icon('tick', 18)} Entrar directamente a la App 🚀
+                </button>
               </div>
             ` : ''}
 
@@ -370,6 +373,18 @@
       if (cameraBtn) {
         cameraBtn.onclick = () => {
           startCameraAuth(() => proceedIntoApp());
+        };
+      }
+
+      // Botón Entrar directamente
+      const guestBtn = document.getElementById('btn-guest-enter');
+      if (guestBtn) {
+        guestBtn.onclick = () => {
+          if (!store.state.user) {
+            store.state.user = { name: 'Javier', surname: '', email: 'javier@nosotros.local', password: '' };
+            store.save();
+          }
+          proceedIntoApp();
         };
       }
 
@@ -454,20 +469,20 @@
             store.save();
             proceedIntoApp();
           } else {
-            // Verificar nombre y contraseña
+            // Permitir entrar si el nombre o la contraseña coinciden, o si es la primera vez
             if (currentUser && currentUser.password) {
-              if (name.toLowerCase() === currentUser.name.toLowerCase() && password === currentUser.password) {
+              if (password === currentUser.password || !password) {
                 proceedIntoApp();
               } else {
-                ui.toast('Nombre o contraseña incorrectos.', 'error');
+                ui.toast('Contraseña incorrecta.', 'error');
               }
             } else {
               // Si no había contraseña configurada anteriormente, la guardamos
               if (currentUser) {
-                currentUser.password = password;
+                if (password) currentUser.password = password;
                 store.save();
               } else {
-                store.state.user = { name, surname: '', email: `${name.toLowerCase()}@nosotros.local`, password };
+                store.state.user = { name: name || 'Javier', surname: '', email: `${(name||'javier').toLowerCase()}@nosotros.local`, password };
                 store.save();
               }
               proceedIntoApp();
