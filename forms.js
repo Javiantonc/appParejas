@@ -226,6 +226,114 @@
     });
   }
 
+  /* ---------------- RECORDATORIO / BILLETE / QR / RESERVA ---------------- */
+  function reminder(r, pre) {
+    const isNew = !r;
+    const d = Object.assign({
+      title: '',
+      category: 'cinema',
+      date: dt.today(),
+      time: '',
+      code: '',
+      locator: '',
+      seat: '',
+      place: '',
+      notes: '',
+      photo: ''
+    }, r || pre || {});
+
+    let photo = d.photo || '';
+    const catOpts = Object.entries(store.REMINDER_CATS).map(([k, c]) => ({ v: k, label: `${c.emoji} ${c.label}` }));
+
+    ui.modal({
+      title: isNew ? 'Nuevo recordatorio / entrada 🎟️' : 'Editar entrada o reserva',
+      size: 'lg',
+      html: `<form class="form" autocomplete="off">
+        <input class="big-input" name="title" placeholder="Ej: Entradas Cine Avatar, Vuelo Madrid-París, Hotel…" value="${esc(d.title)}" required>
+        ${field('Tipo de recordatorio', seg('category', catOpts, d.category))}
+        <div class="row2">
+          ${field('Fecha del evento / reserva', `<input type="date" name="date" value="${d.date || ''}">`)}
+          ${field('Hora', `<input type="time" name="time" value="${d.time || ''}">`)}
+        </div>
+        <div class="row2">
+          ${field('Localizador / Ref. Reserva', `<input type="text" name="locator" placeholder="Ej: Y8X3KP, #4920…" value="${esc(d.locator)}">`)}
+          ${field('Asiento / Sala / Habitación', `<input type="text" name="seat" placeholder="Ej: Butacas F12-F13, Hab. 304…" value="${esc(d.seat)}">`)}
+        </div>
+        ${field('Lugar / Dirección', `<input type="text" name="place" placeholder="Ej: Cines Callao, Terminal T4, Hotel Riu…" value="${esc(d.place)}">`)}
+        ${field('Texto / Código QR / Enlace', `<input type="text" name="code" placeholder="Código de barras, código numérico o enlace web…" value="${esc(d.code)}">`)}
+        ${field('Foto del QR / Entrada / PDF capturado', `<label class="drop">${icon('qr', 26)}<b>Subir código QR o foto del billete</b><small>Toca para adjuntar la entrada o justificante</small><input type="file" accept="image/*" hidden></label><div class="photo-grid" data-photo></div>`)}
+        ${field('Notas adicionales', `<textarea name="notes" rows="2" placeholder="Recordar llevar DNI, check-in online hecho, equipaje de mano…">${esc(d.notes)}</textarea>`)}
+        <div class="form-actions">
+          ${isNew ? '' : `<button type="button" class="btn danger" data-del>${icon('trash', 16)} Eliminar</button>`}
+          <span class="grow"></span>
+          <button type="button" class="btn ghost" data-cancel>Cancelar</button>
+          <button class="btn primary" type="submit">${isNew ? 'Guardar recordatorio 🎟️' : 'Guardar cambios'}</button>
+        </div>
+      </form>`,
+      onMount(root, close) {
+        const form = root.querySelector('form');
+        const grid = root.querySelector('[data-photo]');
+        const input = root.querySelector('input[type=file]');
+
+        const draw = () => {
+          grid.innerHTML = photo ? `<div class="ph" style="aspect-ratio:auto;max-height:220px;border-radius:14px;overflow:hidden;position:relative"><img src="${photo}" alt="QR / Billete" style="max-height:220px;width:100%;object-fit:contain;background:#000;border-radius:14px"><button type="button" data-rm aria-label="Quitar">${icon('x', 14)}</button></div>` : '';
+        };
+        draw();
+
+        input.onchange = async () => {
+          if (input.files[0]) {
+            try {
+              photo = await ui.compress(input.files[0], 1200, 0.75);
+            } catch (e) {
+              ui.toast('No se pudo procesar la imagen', 'error');
+            }
+            draw();
+          }
+          input.value = '';
+        };
+
+        grid.onclick = e => {
+          if (e.target.closest('[data-rm]')) {
+            photo = '';
+            draw();
+          }
+        };
+
+        root.querySelector('[data-cancel]').onclick = close;
+        const del = root.querySelector('[data-del]');
+        if (del) del.onclick = async () => {
+          if (await ui.confirmBox('¿Eliminar este recordatorio?')) {
+            store.remove('reminders', r.id);
+            close();
+            done('Recordatorio eliminado');
+          }
+        };
+
+        form.onsubmit = e => {
+          e.preventDefault();
+          const f = new FormData(form);
+          const data = {
+            title: f.get('title').trim(),
+            category: f.get('category'),
+            date: f.get('date') || '',
+            time: f.get('time') || '',
+            locator: f.get('locator').trim(),
+            seat: f.get('seat').trim(),
+            place: f.get('place').trim(),
+            code: f.get('code').trim(),
+            notes: f.get('notes').trim(),
+            photo
+          };
+          if (!data.title) return;
+          if (isNew) store.add('reminders', data);
+          else store.update('reminders', r.id, data);
+          close();
+          done(isNew ? '¡Billetes / QR guardados con éxito! 🎟️' : 'Recordatorio actualizado');
+        };
+      }
+    });
+  }
+
   /* ---------------- Añadir rápido y abrir evento ---------------- */
   function openEvent(kind, id) {
     if (kind === 'task') {
@@ -236,6 +344,9 @@
     } else if (kind === 'meal') {
       const m = store.get('meals', id);
       if (m) meal(m);
+    } else if (kind === 'reminder') {
+      const r = store.get('reminders', id);
+      if (r) reminder(r);
     }
   }
 
@@ -287,10 +398,11 @@
         <span class="fl" style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px;display:block">
           ¿Qué quieres añadir a este día?
         </span>
-        <div class="quick">
+        <div class="quick" style="grid-template-columns:repeat(4,1fr)">
           <button type="button" data-k="task"><span>✅</span>Tarea</button>
           <button type="button" data-k="plan"><span>💞</span>Plan</button>
           <button type="button" data-k="meal"><span>🍝</span>Comida</button>
+          <button type="button" data-k="reminder"><span>🎟️</span>Billete/QR</button>
         </div>
       `,
       onMount(root, close) {
@@ -335,6 +447,9 @@
                 const h = chosenTime ? dt.toMin(chosenTime) : null;
                 const type = h == null ? 'lunch' : h < 11 * 60 ? 'breakfast' : h < 16 * 60 ? 'lunch' : h < 19 * 60 ? 'snack' : 'dinner';
                 meal(null, { date: chosenDate, type, time: chosenTime || MEALS[type].time });
+              }
+              if (k === 'reminder') {
+                reminder(null, { date: chosenDate, time: chosenTime || '' });
               }
             }, 200);
           };
@@ -383,5 +498,5 @@
     });
   }
 
-  App.forms = { task, plan, planDetail, meal, quickAdd, openEvent, registerModal };
+  App.forms = { task, plan, planDetail, meal, reminder, quickAdd, openEvent, registerModal };
 })();

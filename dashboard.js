@@ -90,6 +90,7 @@
           <button class="btn" data-a="task">${icon("plus", 16)} Tarea</button>
           <button class="btn" data-a="plan">${icon("plus", 16)} Plan</button>
           <button class="btn" data-a="meal">${icon("plus", 16)} Comida</button>
+          <button class="btn" data-a="reminder">${icon("plus", 16)} Billete/QR</button>
         </div>
       </section>
 

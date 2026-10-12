@@ -11,7 +11,7 @@
   const HOUR = 56; // px por hora (debe coincidir con --hour del CSS)
   let mode = null; // 'day' | 'week' | 'month'
   let cursor = dt.today();
-  const filters = { task: true, plan: true, meal: true };
+  const filters = { task: true, plan: true, meal: true, reminder: true };
   let scrollTop = null;
   let timer = null;
 
@@ -19,6 +19,7 @@
     { k: "task", label: "Tareas", color: "#34c759" },
     { k: "plan", label: "Planes", color: "#ff4d7d" },
     { k: "meal", label: "Comidas", color: "#ff9500" },
+    { k: "reminder", label: "Billetes/QR", color: "#bf5af2" },
   ];
 
   const WD = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"];

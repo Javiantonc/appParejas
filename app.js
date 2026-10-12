@@ -7,12 +7,13 @@
   const { icon, esc, avatar } = ui;
 
   const ROUTES = [
-    { id: 'inicio',     label: 'Inicio',     icon: 'home' },
-    { id: 'calendario', label: 'Calendario', icon: 'calendar' },
-    { id: 'tareas',     label: 'Tareas',     icon: 'check' },
-    { id: 'planes',     label: 'Planes',     icon: 'heart' },
-    { id: 'comidas',    label: 'Comidas',    icon: 'food' },
-    { id: 'ajustes',    label: 'Ajustes',    icon: 'sliders' },
+    { id: 'inicio',        label: 'Inicio',        icon: 'home' },
+    { id: 'calendario',    label: 'Calendario',    icon: 'calendar' },
+    { id: 'tareas',        label: 'Tareas',        icon: 'check' },
+    { id: 'planes',        label: 'Planes',        icon: 'heart' },
+    { id: 'comidas',       label: 'Comidas',       icon: 'food' },
+    { id: 'recordatorios', label: 'Billetes & QR', icon: 'ticket' },
+    { id: 'ajustes',       label: 'Ajustes',       icon: 'sliders' },
   ];
 
   const current = () => {

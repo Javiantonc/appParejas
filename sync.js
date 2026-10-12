@@ -72,6 +72,7 @@
         tasks: App.store.state.tasks,
         plans: App.store.state.plans,
         meals: App.store.state.meals,
+        reminders: App.store.state.reminders || [],
         coupleName: App.store.state.settings.coupleName,
         partners: App.store.state.settings.partners
       };

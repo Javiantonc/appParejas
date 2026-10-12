@@ -96,7 +96,17 @@
     weekly: "Cada semana",
     monthly: "Cada mes",
   };
-  const KIND_COLOR = { plan: "#ff4d7d", meal: "#ff9500" };
+  const KIND_COLOR = { plan: "#ff4d7d", meal: "#ff9500", reminder: "#bf5af2" };
+
+  const REMINDER_CATS = {
+    cinema: { label: "Cine / Espectáculo", emoji: "🍿", color: "#bf5af2" },
+    flights: { label: "Vuelos / Billetes", emoji: "✈️", color: "#0a84ff" },
+    hotel: { label: "Hotel / Alojamiento", emoji: "🏨", color: "#ff9500" },
+    concert: { label: "Concierto / Evento", emoji: "🎟️", color: "#ff2d55" },
+    restaurant: { label: "Reserva Restaurante", emoji: "🍷", color: "#ff3b30" },
+    travel: { label: "Tren / Transporte", emoji: "🚄", color: "#5856d6" },
+    general: { label: "Otro / Recuerdos", emoji: "📎", color: "#34c759" },
+  };
 
   /* ---------- Estado ---------- */
   const uid = () =>
@@ -116,6 +126,7 @@
     tasks: [],
     plans: [],
     meals: [],
+    reminders: [],
     seeded: false,
   });
 
@@ -297,9 +308,11 @@
       if (raw) {
         const s = JSON.parse(raw),
           d = defaults();
-        return Object.assign(d, s, {
+        const loaded = Object.assign(d, s, {
           settings: Object.assign(d.settings, s.settings || {}),
         });
+        if (!Array.isArray(loaded.reminders)) loaded.reminders = [];
+        return loaded;
       }
     } catch (e) {
       /* datos corruptos: empezamos de cero */
@@ -314,6 +327,7 @@
     CATS,
     MEALS,
     PLAN_STATUS,
+    REMINDER_CATS,
     PRIO,
     REPEAT,
     uid,
@@ -360,6 +374,10 @@
       }
       if (Array.isArray(payload.meals)) {
         store.state.meals = payload.meals;
+        changed = true;
+      }
+      if (Array.isArray(payload.reminders)) {
+        store.state.reminders = payload.reminders;
         changed = true;
       }
       if (payload.coupleName) {
@@ -496,6 +514,23 @@
           color: KIND_COLOR.meal,
           sub: MEALS[m.type].label,
           emoji: MEALS[m.type].emoji,
+        });
+      });
+      (S.reminders || []).forEach((r) => {
+        if (r.date !== iso) return;
+        const s = toMin(r.time);
+        const cat = REMINDER_CATS[r.category] || REMINDER_CATS.general;
+        out.push({
+          kind: "reminder",
+          id: r.id,
+          title: r.title,
+          done: false,
+          allDay: s == null,
+          start: s ?? 0,
+          end: s == null ? 0 : Math.min(1440, s + 60),
+          color: cat.color || KIND_COLOR.reminder,
+          sub: cat.label,
+          emoji: cat.emoji || "🎟️",
         });
       });
       return out.sort((a, b) => b.allDay - a.allDay || a.start - b.start);
