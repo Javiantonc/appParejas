@@ -366,7 +366,10 @@
         store.state.settings.coupleName = payload.coupleName;
         changed = true;
       }
-      if (payload.partnerA && payload.partnerB) {
+      if (Array.isArray(payload.partners) && payload.partners.length === 2) {
+        store.state.settings.partners = payload.partners;
+        changed = true;
+      } else if (payload.partnerA && payload.partnerB) {
         store.state.settings.partners = [payload.partnerA, payload.partnerB];
         changed = true;
       }

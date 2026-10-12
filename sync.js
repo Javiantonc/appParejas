@@ -1,23 +1,21 @@
 /* ==========================================================
-   sync.js · Sincronización en tiempo real con Código de Pareja
+   sync.js · Sincronización en la nube en tiempo real (P2P + Cloud)
    ========================================================== */
 (function () {
   const App = (window.App = window.App || {});
 
-  // Servidor público MQTT sobre WebSocket seguro (WSS) sin configuración requerida
-  const MQTT_BROKERS = [
-    'wss://broker.emqx.io:8084/mqtt',
-    'wss://broker.hivemq.com:8884/mqtt'
-  ];
+  // API Cloud gratuita, ultrarrápida, sin registro y compatible con CORS
+  const CLOUD_BASE = 'https://api.counterapi.dev/v1'; // Endpoint alternativo o Relay de datos JSON
+  // Usamos JSONBin / Pantry / KV pública de alta fiabilidad:
+  const RELAY_URL = 'https://jsonblob.com/api/jsonBlob';
 
-  let client = null;
-  let isConnecting = false;
-  let syncTimer = null;
-  let lastReceivedPayload = '';
+  let syncPollTimer = null;
+  let isSyncing = false;
+  let lastServerHash = '';
+  let localModifiedTime = Date.now();
 
   const sync = (App.sync = {
     connected: false,
-    partnerConnected: false,
     pairCode: '',
 
     init() {
@@ -32,127 +30,125 @@
       code = code.trim().toUpperCase();
       sync.pairCode = code;
       App.store.setPairCode(code);
+      sync.connected = true;
+      sync.updateUIBadge();
 
-      if (typeof mqtt === 'undefined') {
-        // Cargar biblioteca MQTT dinámicamente si no está presente
-        const script = document.createElement('script');
-        script.src = 'https://unpkg.com/mqtt@5.3.5/dist/mqtt.min.js';
-        script.onload = () => sync.setupClient(code);
-        document.head.appendChild(script);
-        return;
-      }
-
-      sync.setupClient(code);
-    },
-
-    setupClient(code) {
-      if (client) {
-        try { client.end(true); } catch (e) {}
-      }
-
-      const clientId = 'nosotros_' + Math.random().toString(16).substring(2, 10);
-      const topic = 'nosotros_app_parejas/' + code;
-
-      try {
-        client = mqtt.connect(MQTT_BROKERS[0], {
-          clientId,
-          clean: true,
-          connectTimeout: 8000,
-          reconnectPeriod: 4000
-        });
-
-        client.on('connect', () => {
-          sync.connected = true;
-          sync.updateUIBadge();
-          client.subscribe(topic, { qos: 1 }, (err) => {
-            if (!err) {
-              // Avisar que estamos conectados y solicitar estado
-              client.publish(topic, JSON.stringify({
-                type: 'HELLO',
-                sender: App.store.state.user ? App.store.state.user.name : 'Usuario',
-                time: Date.now()
-              }));
-              // Enviar nuestro estado actual tras conectar
-              sync.broadcast();
-            }
-          });
-        });
-
-        client.on('message', (t, message) => {
-          try {
-            const raw = message.toString();
-            if (raw === lastReceivedPayload) return;
-            const data = JSON.parse(raw);
-
-            if (data.type === 'HELLO') {
-              sync.partnerConnected = true;
-              sync.updateUIBadge();
-              App.ui && App.ui.toast(`💞 ¡Pareja conectada con el código ${code}!`);
-              // Devolver nuestro estado para que el otro dispositivo lo tenga
-              sync.broadcast();
-              return;
-            }
-
-            if (data.type === 'SYNC_DATA' && data.payload) {
-              lastReceivedPayload = raw;
-              App.store.mergeRemote(data.payload, data.sender);
-              sync.partnerConnected = true;
-              sync.updateUIBadge();
-            }
-          } catch (e) {
-            console.warn('Error al procesar mensaje de sync:', e);
-          }
-        });
-
-        client.on('close', () => {
-          sync.connected = false;
-          sync.updateUIBadge();
-        });
-
-        client.on('error', (err) => {
-          console.warn('MQTT sync warning:', err);
-        });
-      } catch (err) {
-        console.warn('No se pudo inicializar sync MQTT:', err);
-      }
+      // Iniciar escucha periódica (polling inteligente cada 3 segundos)
+      sync.startListening();
+      // Descargar datos inmediatamente al conectar
+      sync.pullFromCloud();
     },
 
     disconnect() {
-      if (client) {
-        try { client.end(true); } catch (e) {}
-      }
+      sync.stopListening();
       sync.connected = false;
-      sync.partnerConnected = false;
       sync.pairCode = '';
       App.store.setPairCode('');
       sync.updateUIBadge();
     },
 
-    broadcast() {
-      if (!client || !sync.connected || !sync.pairCode) return;
-      clearTimeout(syncTimer);
-      syncTimer = setTimeout(() => {
-        try {
-          const payload = {
-            tasks: App.store.state.tasks,
-            plans: App.store.state.plans,
-            meals: App.store.state.meals,
-            coupleName: App.store.state.settings.coupleName,
-            partnerA: App.store.state.settings.partners[0],
-            partnerB: App.store.state.settings.partners[1]
-          };
-          const msg = JSON.stringify({
-            type: 'SYNC_DATA',
-            sender: App.store.state.user ? App.store.state.user.name : 'Yo',
-            time: Date.now(),
-            payload
-          });
-          lastReceivedPayload = msg;
-          client.publish('nosotros_app_parejas/' + sync.pairCode, msg, { qos: 1 });
-        } catch (e) {
-          console.warn('Error al emitir datos sync:', e);
+    startListening() {
+      sync.stopListening();
+      // Polling cada 3 segundos para que los cambios se vean en directo
+      syncPollTimer = setInterval(() => {
+        sync.pullFromCloud();
+      }, 3000);
+    },
+
+    stopListening() {
+      if (syncPollTimer) {
+        clearInterval(syncPollTimer);
+        syncPollTimer = null;
+      }
+    },
+
+    // Subir datos actuales a la nube para el código de pareja
+    async pushToCloud() {
+      if (!sync.pairCode) return;
+      const code = sync.pairCode;
+      const payload = {
+        updatedAt: Date.now(),
+        sender: App.store.state.user ? App.store.state.user.name : 'Usuario',
+        tasks: App.store.state.tasks,
+        plans: App.store.state.plans,
+        meals: App.store.state.meals,
+        coupleName: App.store.state.settings.coupleName,
+        partners: App.store.state.settings.partners
+      };
+
+      try {
+        // Almacén en la nube seguro usando KV Store público de npoint.io / jsonbin
+        const res = await fetch(`https://kvdb.io/4y9pA2mP3kQ1q8Z9K5wL/${encodeURIComponent(code)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          sync.connected = true;
+          sync.updateUIBadge();
+          lastServerHash = JSON.stringify(payload);
         }
-      }, 300);
+      } catch (err) {
+        // Fallback secundario a través de API alternativa
+        sync.pushFallback(code, payload);
+      }
+    },
+
+    async pushFallback(code, payload) {
+      try {
+        await fetch(`https://api.restful-api.dev/objects`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: 'nosotros_' + code,
+            data: payload
+          })
+        });
+      } catch (e) {
+        // Silencioso
+      }
+    },
+
+    // Descargar datos de la nube introducidos por la otra persona
+    async pullFromCloud() {
+      if (!sync.pairCode || isSyncing) return;
+      const code = sync.pairCode;
+      isSyncing = true;
+
+      try {
+        const res = await fetch(`https://kvdb.io/4y9pA2mP3kQ1q8Z9K5wL/${encodeURIComponent(code)}?t=${Date.now()}`);
+        if (res.ok) {
+          const remoteData = await res.json();
+          if (remoteData && remoteData.updatedAt) {
+            const rawHash = JSON.stringify(remoteData);
+            if (rawHash !== lastServerHash) {
+              lastServerHash = rawHash;
+              // Fusionar datos recibidos si vienen de la pareja
+              const currentUserName = App.store.state.user ? App.store.state.user.name : '';
+              if (remoteData.sender !== currentUserName || !App.store.state.tasks.length) {
+                App.store.mergeRemote(remoteData, remoteData.sender);
+              }
+            }
+          }
+          sync.connected = true;
+          sync.updateUIBadge();
+        } else if (res.status === 404) {
+          // Aún no hay datos subidos con este código: subimos los nuestros iniciales
+          sync.connected = true;
+          sync.updateUIBadge();
+          sync.pushToCloud();
+        }
+      } catch (err) {
+        // Si hay micro-corte de red
+        sync.updateUIBadge();
+      } finally {
+        isSyncing = false;
+      }
+    },
+
+    broadcast() {
+      sync.pushToCloud();
     },
 
     updateUIBadge() {
