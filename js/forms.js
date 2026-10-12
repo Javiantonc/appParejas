@@ -141,6 +141,10 @@
         ${p.description ? `<p style="margin:10px 0 18px;white-space:pre-wrap">${esc(p.description)}</p>` : ''}
         <div class="form-actions">
           <button class="btn danger" data-del>${icon('trash', 16)}</button>
+          <label class="btn" style="cursor:pointer">
+            ${icon('image', 16)} Añadir foto
+            <input type="file" accept="image/*" hidden data-add-photo>
+          </label>
           <span class="grow"></span>
           ${p.status !== 'done' ? `<button class="btn" data-done>✅ Marcar como hecho</button>` : ''}
           <button class="btn primary" data-edit>${icon('edit', 16)} Editar</button>
@@ -148,6 +152,24 @@
       onMount(root, close) {
         root.querySelectorAll('[data-ph]').forEach(img => img.onclick = () => ui.lightbox(p.photos, +img.dataset.ph));
         root.querySelector('[data-edit]').onclick = () => { close(); setTimeout(() => plan(p), 220); };
+        const addPhotoInput = root.querySelector('[data-add-photo]');
+        if (addPhotoInput) {
+          addPhotoInput.onchange = async () => {
+            if (addPhotoInput.files[0]) {
+              try {
+                const compressed = await ui.compress(addPhotoInput.files[0]);
+                p.photos = p.photos || [];
+                p.photos.push(compressed);
+                store.update('plans', p.id, { photos: p.photos });
+                close();
+                planDetail(p.id);
+                done('¡Foto guardada en el recuerdo! 📸');
+              } catch (e) {
+                ui.toast('No se pudo cargar la imagen', 'error');
+              }
+            }
+          };
+        }
         const dn = root.querySelector('[data-done]');
         if (dn) dn.onclick = () => { store.update('plans', p.id, { status: 'done' }); close(); done('¡Plan hecho! Añade fotos para el recuerdo 📸'); };
         root.querySelector('[data-del]').onclick = async () => { if (await ui.confirmBox('¿Eliminar este plan?')) { store.remove('plans', p.id); close(); done('Plan eliminado'); } };
@@ -217,28 +239,39 @@
     }
   }
 
-  function quickAdd(date, time) {
-    date = date || dt.today();
+  function quickAdd(initialDate, initialTime) {
+    let date = initialDate || dt.today();
+    let time = initialTime || '';
     ui.modal({
       title: 'Añadir al día', size: 'sm',
-      html: `<p class="muted" style="margin-bottom:14px">${esc(ui.when(date, time, 60))}</p>
+      html: `
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <input type="date" id="qa-date" value="${date}" style="flex:1;padding:8px 10px;font-size:13px">
+          <input type="time" id="qa-time" value="${time}" style="width:110px;padding:8px 10px;font-size:13px">
+        </div>
         <div class="quick">
-          <button data-k="task"><span>✅</span>Tarea</button>
-          <button data-k="plan"><span>💞</span>Plan</button>
-          <button data-k="meal"><span>🍝</span>Comida</button>
+          <button type="button" data-k="task"><span>✅</span>Tarea</button>
+          <button type="button" data-k="plan"><span>💞</span>Plan</button>
+          <button type="button" data-k="meal"><span>🍝</span>Comida</button>
         </div>`,
       onMount(root, close) {
+        const dInput = root.querySelector('#qa-date');
+        const tInput = root.querySelector('#qa-time');
+
         root.querySelectorAll('[data-k]').forEach(b => b.onclick = () => {
-          const k = b.dataset.k; close();
+          const k = b.dataset.k;
+          const chosenDate = dInput ? dInput.value : date;
+          const chosenTime = tInput ? tInput.value : time;
+          close();
           setTimeout(() => {
-            if (k === 'task') task(null, { due: date, time: time || '' });
-            if (k === 'plan') plan(null, { date, time: time || '', status: 'planned' });
+            if (k === 'task') task(null, { due: chosenDate, time: chosenTime || '' });
+            if (k === 'plan') plan(null, { date: chosenDate, time: chosenTime || '', status: 'planned' });
             if (k === 'meal') {
-              const h = time ? dt.toMin(time) : null;
+              const h = chosenTime ? dt.toMin(chosenTime) : null;
               const type = h == null ? 'lunch' : h < 11 * 60 ? 'breakfast' : h < 16 * 60 ? 'lunch' : h < 19 * 60 ? 'snack' : 'dinner';
-              meal(null, { date, type, time: time || MEALS[type].time });
+              meal(null, { date: chosenDate, type, time: chosenTime || MEALS[type].time });
             }
-          }, 220);
+          }, 200);
         });
       },
     });

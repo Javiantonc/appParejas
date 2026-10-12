@@ -78,16 +78,46 @@
       ${html}
     </div>`;
 
-    el.querySelector('[data-new]').onclick = () => App.forms.task(null);
-    el.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { f[b.dataset.f] = b.dataset.v; App.refresh(); });
+    const newBtn = el.querySelector('[data-new]');
+    if (newBtn) {
+      newBtn.onclick = (e) => {
+        e.preventDefault();
+        App.forms.task(null);
+      };
+    }
+
+    el.querySelectorAll('[data-f]').forEach(b => {
+      b.onclick = (e) => {
+        e.preventDefault();
+        f[b.dataset.f] = b.dataset.v;
+        App.refresh();
+      };
+    });
+
     const q = el.querySelector('[data-q]');
-    q.oninput = () => {
-      f.q = q.value; const pos = q.selectionStart; App.refresh();
-      const nq = document.querySelector('[data-q]'); nq.focus(); nq.setSelectionRange(pos, pos);
-    };
+    if (q) {
+      q.oninput = () => {
+        f.q = q.value;
+        const pos = q.selectionStart;
+        App.refresh();
+        const nq = document.querySelector('[data-q]');
+        if (nq) {
+          nq.focus();
+          nq.setSelectionRange(pos, pos);
+        }
+      };
+    }
+
     el.querySelectorAll('.task').forEach(row => {
       row.onclick = e => {
-        if (e.target.closest('[data-toggle]')) { const m = store.toggleTask(row.dataset.id); App.refresh(); if (m) ui.toast(m); return; }
+        e.preventDefault();
+        if (e.target.closest('[data-toggle]')) {
+          e.stopPropagation();
+          const m = store.toggleTask(row.dataset.id);
+          App.refresh();
+          if (m) ui.toast(m);
+          return;
+        }
         App.forms.task(store.get('tasks', row.dataset.id));
       };
     });
