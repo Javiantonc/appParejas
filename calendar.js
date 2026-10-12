@@ -242,26 +242,30 @@
       };
     }
 
-    body.addEventListener("click", (e) => {
+    el.addEventListener("click", (e) => {
       const ev = e.target.closest("[data-kind]");
       if (ev) {
+        e.preventDefault();
         e.stopPropagation();
         return App.forms.openEvent(ev.dataset.kind, ev.dataset.id);
       }
       const head = e.target.closest(".ch");
       if (head) {
+        e.preventDefault();
         cursor = head.dataset.day;
         App.forms.quickAdd(cursor);
         return;
       }
       const md = e.target.closest(".mday");
       if (md) {
+        e.preventDefault();
         cursor = md.dataset.date;
         App.forms.quickAdd(cursor);
         return;
       }
       const col = e.target.closest(".col");
       if (col) {
+        e.preventDefault();
         const y = e.clientY - col.getBoundingClientRect().top;
         const min = Math.min(23 * 60, Math.floor((y / HOUR) * 2) * 30);
         App.forms.quickAdd(col.dataset.date, dt.fromMin(min));

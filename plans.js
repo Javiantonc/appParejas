@@ -59,9 +59,29 @@
       ${html || `<div class="empty card"><div class="big">💞</div><b>Todavía no hay planes</b><p>Empezad con una idea: una cena, una escapada o una noche de pelis.</p></div>`}
     </div>`;
 
-    el.querySelector('[data-new]').onclick = () => App.forms.plan(null);
-    el.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { filter = b.dataset.f; App.refresh(); });
-    el.querySelectorAll('.plan').forEach(c => c.onclick = () => App.forms.planDetail(c.dataset.id));
+    const newBtn = el.querySelector('[data-new]');
+    if (newBtn) {
+      newBtn.onclick = (e) => {
+        e.preventDefault();
+        App.forms.plan(null);
+      };
+    }
+
+    el.querySelectorAll('[data-f]').forEach(b => {
+      b.onclick = (e) => {
+        e.preventDefault();
+        filter = b.dataset.f;
+        App.refresh();
+      };
+    });
+
+    el.addEventListener('click', (e) => {
+      const card = e.target.closest('.plan');
+      if (card && card.dataset.id) {
+        e.preventDefault();
+        App.forms.planDetail(card.dataset.id);
+      }
+    });
   }
 
   App.views.planes = { render };
