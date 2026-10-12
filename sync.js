@@ -118,6 +118,8 @@
         plans: App.store.state.plans,
         meals: App.store.state.meals,
         reminders: App.store.state.reminders || [],
+        groups: App.store.state.groups || [],
+        expenses: App.store.state.expenses || [],
         coupleName: App.store.state.settings.coupleName,
         partners: App.store.state.settings.partners
       };

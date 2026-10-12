@@ -141,6 +141,8 @@
     plans: [],
     meals: [],
     reminders: [],
+    groups: [],
+    expenses: [],
     seeded: false,
   });
 
@@ -326,6 +328,8 @@
           settings: Object.assign(d.settings, s.settings || {}),
         });
         if (!Array.isArray(loaded.reminders)) loaded.reminders = [];
+        if (!Array.isArray(loaded.groups)) loaded.groups = [];
+        if (!Array.isArray(loaded.expenses)) loaded.expenses = [];
         return loaded;
       }
     } catch (e) {
@@ -393,6 +397,14 @@
       }
       if (Array.isArray(payload.reminders)) {
         store.state.reminders = payload.reminders;
+        changed = true;
+      }
+      if (Array.isArray(payload.groups)) {
+        store.state.groups = payload.groups;
+        changed = true;
+      }
+      if (Array.isArray(payload.expenses)) {
+        store.state.expenses = payload.expenses;
         changed = true;
       }
       if (payload.coupleName) {
@@ -550,6 +562,100 @@
         });
       });
       return out.sort((a, b) => b.allDay - a.allDay || a.start - b.start);
+    },
+
+    /**
+     * Calcula los balances y transferencias óptimas (estilo Tricount) para un grupo
+     */
+    getGroupSummary(groupId) {
+      const grp = store.get("groups", groupId);
+      if (!grp) return null;
+      const members = grp.members || [];
+      const exps = (store.state.expenses || []).filter(e => e.groupId === groupId);
+
+      // Balances individuales: + ha pagado de más (se le debe), - debe dinero
+      const balances = {};
+      const paidTotals = {};
+      const shareTotals = {};
+      members.forEach(m => {
+        balances[m.id] = 0;
+        paidTotals[m.id] = 0;
+        shareTotals[m.id] = 0;
+      });
+
+      let totalSpent = 0;
+
+      exps.forEach(e => {
+        const amount = Number(e.amount) || 0;
+        totalSpent += amount;
+        const payerId = e.payerId;
+        if (balances[payerId] !== undefined) {
+          balances[payerId] += amount;
+          paidTotals[payerId] += amount;
+        }
+
+        const splitWith = (e.splitWith && e.splitWith.length) ? e.splitWith : members.map(m => m.id);
+        const splitCount = splitWith.length;
+        if (splitCount > 0) {
+          const perPerson = amount / splitCount;
+          splitWith.forEach(mid => {
+            if (balances[mid] !== undefined) {
+              balances[mid] -= perPerson;
+              shareTotals[mid] += perPerson;
+            }
+          });
+        }
+      });
+
+      // Calcular transferencias óptimas (quién le debe a quién)
+      const debtors = []; // deben dinero (balance negativo)
+      const creditors = []; // se les debe dinero (balance positivo)
+
+      members.forEach(m => {
+        const bal = Math.round((balances[m.id] || 0) * 100) / 100;
+        if (bal < -0.01) {
+          debtors.push({ id: m.id, name: m.name, amount: -bal });
+        } else if (bal > 0.01) {
+          creditors.push({ id: m.id, name: m.name, amount: bal });
+        }
+      });
+
+      debtors.sort((a, b) => b.amount - a.amount);
+      creditors.sort((a, b) => b.amount - a.amount);
+
+      const transfers = [];
+      let i = 0, j = 0;
+      while (i < debtors.length && j < creditors.length) {
+        const debtor = debtors[i];
+        const creditor = creditors[j];
+        const settleAmount = Math.min(debtor.amount, creditor.amount);
+
+        if (settleAmount > 0.009) {
+          transfers.push({
+            fromId: debtor.id,
+            fromName: debtor.name,
+            toId: creditor.id,
+            toName: creditor.name,
+            amount: Math.round(settleAmount * 100) / 100
+          });
+        }
+
+        debtor.amount -= settleAmount;
+        creditor.amount -= settleAmount;
+
+        if (debtor.amount < 0.01) i++;
+        if (creditor.amount < 0.01) j++;
+      }
+
+      return {
+        group: grp,
+        totalSpent: Math.round(totalSpent * 100) / 100,
+        expenseCount: exps.length,
+        balances,
+        paidTotals,
+        shareTotals,
+        transfers
+      };
     },
   };
 

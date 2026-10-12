@@ -13,6 +13,7 @@
     { id: 'planes',        label: 'Planes',        icon: 'heart' },
     { id: 'comidas',       label: 'Comidas',       icon: 'food' },
     { id: 'recordatorios', label: 'Billetes & QR', icon: 'ticket' },
+    { id: 'grupos',        label: 'Gastos & Grupos', icon: 'split' },
     { id: 'ajustes',       label: 'Ajustes',       icon: 'sliders' },
   ];
 

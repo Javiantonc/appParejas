@@ -427,11 +427,12 @@
         <span class="fl" style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px;display:block">
           ¿Qué quieres añadir a este día?
         </span>
-        <div class="quick" style="grid-template-columns:repeat(4,1fr)">
+        <div class="quick" style="grid-template-columns:repeat(5,1fr)">
           <button type="button" data-k="task"><span>✅</span>Tarea</button>
           <button type="button" data-k="plan"><span>💞</span>Plan</button>
           <button type="button" data-k="meal"><span>🍝</span>Comida</button>
           <button type="button" data-k="reminder"><span>🎟️</span>Billete/QR</button>
+          <button type="button" data-k="expense"><span>💸</span>Gasto</button>
         </div>
       `,
       onMount(root, close) {
@@ -480,10 +481,386 @@
               if (k === 'reminder') {
                 reminder(null, { date: chosenDate, time: chosenTime || '' });
               }
+              if (k === 'expense') {
+                expense(null);
+              }
             }, 200);
           };
         });
       },
+    });
+  }
+
+  /* ---------------- GRUPO (VIAJES / AMIGOS / FAMILIA) ---------------- */
+  function group(g) {
+    const isNew = !g;
+    const currentUserName = (store.state.user && store.state.user.name) || (store.state.settings.partners[0].name) || 'Yo';
+    const partnerName = (store.state.settings.partners[1] && store.state.settings.partners[1].name) || 'Pareja';
+    const defaultMembers = [
+      { id: 'm1', name: currentUserName, emoji: '🦊' },
+      { id: 'm2', name: partnerName, emoji: '🐼' }
+    ];
+
+    const d = Object.assign({
+      name: '',
+      type: 'trip', // trip, friends, family, flat, other
+      emoji: '✈️',
+      currency: '€',
+      description: '',
+      members: defaultMembers
+    }, g || {});
+
+    const emojis = ['✈️', '🏖️', '⛰️', '🎉', '🍻', '🍕', '🏠', '🚗', '⛺', '🎸', '🎁', '✨'];
+    const types = [
+      { v: 'trip', label: '✈️ Viaje' },
+      { v: 'friends', label: '🍻 Amigos' },
+      { v: 'family', label: '🏡 Familia' },
+      { v: 'flat', label: '🏠 Piso / Convivencia' },
+      { v: 'other', label: '✨ Otro' }
+    ];
+
+    let membersList = JSON.parse(JSON.stringify(d.members || defaultMembers));
+
+    function renderMembersListHTML() {
+      return membersList.map((m, idx) => `
+        <div class="group-member-item" data-idx="${idx}" style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <span style="font-size:18px">${esc(m.emoji || '👤')}</span>
+          <input type="text" class="member-name-input" data-idx="${idx}" value="${esc(m.name)}" placeholder="Nombre" style="flex:1;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface)">
+          ${membersList.length > 2 ? `<button type="button" class="icon-btn del-member-btn" data-idx="${idx}" title="Eliminar participante" style="color:var(--red)">${icon('x', 14)}</button>` : ''}
+        </div>
+      `).join('');
+    }
+
+    ui.modal({
+      title: isNew ? 'Nuevo Grupo de Gastos' : 'Editar Grupo',
+      html: `<form class="form" autocomplete="off">
+        <div class="row2">
+          ${field('Icono', `
+            <div class="emoji-pick" id="grp-emoji-pick">
+              ${emojis.map(e => `<button type="button" class="${e === d.emoji ? 'active' : ''}" data-e="${e}">${e}</button>`).join('')}
+            </div>
+            <input type="hidden" name="emoji" value="${d.emoji}">
+          `)}
+          ${field('Tipo de Grupo', select('type', types.map(t => [t.v, t.label]), d.type))}
+        </div>
+        ${field('Nombre del Grupo', `<input class="big-input" name="name" placeholder="Ej: Viaje a Roma, Cena amigos, Casa..." value="${esc(d.name)}" required>`)}
+        ${field('Descripción / Destino', `<input type="text" name="description" placeholder="Ej: Vacaciones de verano 2026" value="${esc(d.description)}">`)}
+        
+        <div class="fld">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <span class="fl" style="margin-bottom:0">Participantes (${membersList.length})</span>
+            <button type="button" class="btn ghost sm" id="add-member-btn" style="padding:4px 10px;font-size:12px">${icon('plus', 13)} Añadir persona</button>
+          </div>
+          <div id="members-container">${renderMembersListHTML()}</div>
+          <small class="muted" style="display:block;margin-top:4px">Puedes añadir a tantos amigos o familiares como participen en el viaje o grupo.</small>
+        </div>
+
+        <div class="form-actions">
+          ${isNew ? '' : `<button type="button" class="btn danger" data-del>${icon('trash', 16)} Eliminar Grupo</button>`}
+          <span class="grow"></span>
+          <button type="button" class="btn ghost" data-cancel>Cancelar</button>
+          <button class="btn primary" type="submit">${isNew ? 'Crear Grupo' : 'Guardar'}</button>
+        </div>
+      </form>`,
+      onMount(root, close) {
+        const form = root.querySelector('form');
+        const membersCont = root.querySelector('#members-container');
+        const addMemberBtn = root.querySelector('#add-member-btn');
+
+        // Emoji picker
+        root.querySelectorAll('#grp-emoji-pick button').forEach(b => {
+          b.onclick = () => {
+            root.querySelectorAll('#grp-emoji-pick button').forEach(x => x.classList.remove('active'));
+            b.classList.add('active');
+            form.emoji.value = b.dataset.e;
+          };
+        });
+
+        function wireMembersEvents() {
+          membersCont.querySelectorAll('.member-name-input').forEach(input => {
+            input.oninput = () => {
+              const idx = parseInt(input.dataset.idx, 10);
+              if (membersList[idx]) membersList[idx].name = input.value;
+            };
+          });
+          membersCont.querySelectorAll('.del-member-btn').forEach(btn => {
+            btn.onclick = () => {
+              const idx = parseInt(btn.dataset.idx, 10);
+              if (membersList.length > 2) {
+                membersList.splice(idx, 1);
+                membersCont.innerHTML = renderMembersListHTML();
+                wireMembersEvents();
+              }
+            };
+          });
+        }
+        wireMembersEvents();
+
+        addMemberBtn.onclick = () => {
+          const emojisPool = ['🐼', '🦁', '🐨', '🐯', '🐸', '🐙', '🦄', '🐶', '🦊', '🐱'];
+          const randEmoji = emojisPool[membersList.length % emojisPool.length];
+          membersList.push({
+            id: 'm_' + store.uid(),
+            name: `Amigo ${membersList.length + 1}`,
+            emoji: randEmoji
+          });
+          membersCont.innerHTML = renderMembersListHTML();
+          wireMembersEvents();
+          const lastInput = membersCont.querySelector(`input[data-idx="${membersList.length - 1}"]`);
+          if (lastInput) { lastInput.focus(); lastInput.select(); }
+        };
+
+        root.querySelector('[data-cancel]').onclick = close;
+        const del = root.querySelector('[data-del]');
+        if (del) {
+          del.onclick = async () => {
+            if (await ui.confirmBox(`¿Eliminar el grupo "${d.name}" y todos sus gastos?`)) {
+              store.remove('groups', g.id);
+              store.state.expenses = (store.state.expenses || []).filter(e => e.groupId !== g.id);
+              store.save();
+              close();
+              done('Grupo eliminado');
+            }
+          };
+        }
+
+        form.onsubmit = (e) => {
+          e.preventDefault();
+          const f = new FormData(form);
+          const name = f.get('name').trim();
+          if (!name) return;
+
+          // Limpiar participantes vacíos
+          const cleanedMembers = membersList
+            .map(m => ({ id: m.id || ('m_' + store.uid()), name: (m.name || '').trim(), emoji: m.emoji || '👤' }))
+            .filter(m => m.name.length > 0);
+
+          if (cleanedMembers.length < 2) {
+            ui.toast('Añade al menos 2 personas al grupo', 'error');
+            return;
+          }
+
+          const data = {
+            name,
+            type: f.get('type') || 'trip',
+            emoji: f.get('emoji') || '✈️',
+            currency: '€',
+            description: f.get('description').trim(),
+            members: cleanedMembers
+          };
+
+          if (isNew) {
+            const created = store.add('groups', data);
+            close();
+            done('¡Grupo creado! 🎉');
+            if (App.views.grupos && App.views.grupos.selectGroup) {
+              App.views.grupos.selectGroup(created.id);
+            }
+          } else {
+            store.update('groups', g.id, data);
+            close();
+            done('Grupo actualizado');
+          }
+        };
+      }
+    });
+  }
+
+  /* ---------------- GASTO / TRICOUNT ---------------- */
+  function expense(exp, defaultGroupId) {
+    const isNew = !exp;
+    const groups = store.state.groups || [];
+    if (!groups.length) {
+      ui.toast('Primero crea un grupo para añadir gastos', 'info');
+      group();
+      return;
+    }
+
+    const currentGroup = groups.find(g => g.id === (exp ? exp.groupId : defaultGroupId)) || groups[0];
+    const members = currentGroup.members || [];
+
+    const d = Object.assign({
+      groupId: currentGroup.id,
+      title: '',
+      amount: '',
+      currency: '€',
+      date: dt.today(),
+      payerId: members[0] ? members[0].id : '',
+      splitWith: members.map(m => m.id), // por defecto todos
+      category: 'food', // food, transport, lodging, ticket, activity, other
+      notes: ''
+    }, exp || {});
+
+    const EXP_CATS = [
+      { v: 'food', label: '🍔 Comida / Restaurante' },
+      { v: 'transport', label: '🚗 Gasolina / Transporte' },
+      { v: 'lodging', label: '🏨 Alojamiento / Hotel' },
+      { v: 'ticket', label: '🎟️ Entradas / Actividades' },
+      { v: 'supermarket', label: '🛒 Supermercado / Compra' },
+      { v: 'other', label: '✨ Otros Gastos' }
+    ];
+
+    let selectedSplit = Array.isArray(d.splitWith) && d.splitWith.length ? [...d.splitWith] : members.map(m => m.id);
+
+    function renderSplitCheckboxes(membersList) {
+      return `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <small class="muted">Dividir entre (${selectedSplit.length} de ${membersList.length}):</small>
+          <button type="button" class="btn ghost sm" id="toggle-all-split" style="font-size:11px;padding:2px 8px">
+            ${selectedSplit.length === membersList.length ? 'Desmarcar todos' : 'Todos'}
+          </button>
+        </div>
+        <div class="split-checkboxes-grid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(130px, 1fr));gap:6px">
+          ${membersList.map(m => {
+            const checked = selectedSplit.includes(m.id);
+            return `
+              <label class="split-check-item ${checked ? 'active' : ''}" style="display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:10px;border:1px solid ${checked ? 'var(--accent)' : 'var(--line)'};background:${checked ? 'var(--accent-soft)' : 'var(--surface-2)'};cursor:pointer;font-size:13px;font-weight:600">
+                <input type="checkbox" name="split_person" value="${m.id}" ${checked ? 'checked' : ''} style="display:none">
+                <span>${esc(m.emoji || '👤')}</span>
+                <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.name)}</span>
+              </label>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    ui.modal({
+      title: isNew ? 'Añadir Gasto' : 'Editar Gasto',
+      html: `<form class="form" autocomplete="off">
+        <div class="row2">
+          ${field('Importe (€)', `<input type="number" step="0.01" min="0.01" class="big-input" name="amount" placeholder="0.00" value="${d.amount || ''}" required autofocus style="font-weight:800;color:var(--accent)">`)}
+          ${field('Fecha', `<input type="date" name="date" value="${d.date || dt.today()}">`)}
+        </div>
+        ${field('¿Qué se ha pagado? (Concepto)', `<input type="text" name="title" placeholder="Ej: Cena del viernes, Gasolina, Supermercado..." value="${esc(d.title)}" required>`)}
+        
+        <div class="row2">
+          ${groups.length > 1 ? field('Grupo', select('groupId', groups.map(g => [g.id, `${g.emoji} ${g.name}`]), d.groupId)) : `<input type="hidden" name="groupId" value="${d.groupId}">`}
+          ${field('Categoría', select('category', EXP_CATS.map(c => [c.v, c.label]), d.category))}
+        </div>
+
+        ${field('¿Quién ha pagado?', select('payerId', members.map(m => [m.id, `${m.emoji || '👤'} ${m.name}`]), d.payerId))}
+
+        <div class="fld">
+          <span class="fl">¿Entre quiénes se divide?</span>
+          <div id="split-container">${renderSplitCheckboxes(members)}</div>
+          <div id="split-calc-hint" style="margin-top:6px;font-size:12px;color:var(--muted);font-weight:600"></div>
+        </div>
+
+        ${field('Notas opcionales', `<input type="text" name="notes" placeholder="Detalles o aclaraciones..." value="${esc(d.notes)}">`)}
+
+        <div class="form-actions">
+          ${isNew ? '' : `<button type="button" class="btn danger" data-del>${icon('trash', 16)} Eliminar</button>`}
+          <span class="grow"></span>
+          <button type="button" class="btn ghost" data-cancel>Cancelar</button>
+          <button class="btn primary" type="submit">${isNew ? 'Guardar Gasto' : 'Guardar'}</button>
+        </div>
+      </form>`,
+      onMount(root, close) {
+        const form = root.querySelector('form');
+        const splitCont = root.querySelector('#split-container');
+        const hint = root.querySelector('#split-calc-hint');
+
+        function updateHint() {
+          const amt = parseFloat(form.amount.value) || 0;
+          if (amt > 0 && selectedSplit.length > 0) {
+            const pp = (amt / selectedSplit.length).toFixed(2);
+            hint.textContent = `💡 Son ${pp} € por persona (${selectedSplit.length} participantes)`;
+          } else {
+            hint.textContent = '';
+          }
+        }
+
+        form.amount.addEventListener('input', updateHint);
+
+        function wireSplitEvents() {
+          splitCont.querySelectorAll('label').forEach(label => {
+            const cb = label.querySelector('input');
+            label.onclick = (e) => {
+              e.preventDefault();
+              cb.checked = !cb.checked;
+              const mid = cb.value;
+              if (cb.checked) {
+                if (!selectedSplit.includes(mid)) selectedSplit.push(mid);
+              } else {
+                selectedSplit = selectedSplit.filter(x => x !== mid);
+              }
+              splitCont.innerHTML = renderSplitCheckboxes(members);
+              wireSplitEvents();
+              updateHint();
+            };
+          });
+
+          const toggleAllBtn = root.querySelector('#toggle-all-split');
+          if (toggleAllBtn) {
+            toggleAllBtn.onclick = () => {
+              if (selectedSplit.length === members.length) {
+                selectedSplit = [members[0].id];
+              } else {
+                selectedSplit = members.map(m => m.id);
+              }
+              splitCont.innerHTML = renderSplitCheckboxes(members);
+              wireSplitEvents();
+              updateHint();
+            };
+          }
+        }
+        wireSplitEvents();
+        updateHint();
+
+        root.querySelector('[data-cancel]').onclick = close;
+        const del = root.querySelector('[data-del]');
+        if (del) {
+          del.onclick = async () => {
+            if (await ui.confirmBox('¿Eliminar este gasto?')) {
+              store.remove('expenses', exp.id);
+              close();
+              done('Gasto eliminado');
+            }
+          };
+        }
+
+        form.onsubmit = (e) => {
+          e.preventDefault();
+          const f = new FormData(form);
+          const amount = parseFloat(f.get('amount'));
+          const title = f.get('title').trim();
+          if (!amount || isNaN(amount) || amount <= 0) {
+            ui.toast('Introduce un importe válido', 'error');
+            return;
+          }
+          if (!title) {
+            ui.toast('Introduce el concepto del gasto', 'error');
+            return;
+          }
+          if (!selectedSplit.length) {
+            ui.toast('Selecciona al menos una persona para dividir', 'error');
+            return;
+          }
+
+          const data = {
+            groupId: f.get('groupId') || currentGroup.id,
+            title,
+            amount,
+            currency: '€',
+            date: f.get('date') || dt.today(),
+            payerId: f.get('payerId') || (members[0] && members[0].id),
+            splitWith: selectedSplit,
+            category: f.get('category') || 'food',
+            notes: f.get('notes').trim()
+          };
+
+          if (isNew) {
+            store.add('expenses', data);
+            close();
+            done('¡Gasto registrado! 💸');
+          } else {
+            store.update('expenses', exp.id, data);
+            close();
+            done('Gasto guardado');
+          }
+        };
+      }
     });
   }
 
@@ -527,5 +904,5 @@
     });
   }
 
-  App.forms = { task, plan, planDetail, meal, reminder, quickAdd, openEvent, registerModal };
+  App.forms = { task, plan, planDetail, meal, reminder, group, expense, quickAdd, openEvent, registerModal };
 })();
