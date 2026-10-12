@@ -242,36 +242,102 @@
   function quickAdd(initialDate, initialTime) {
     let date = initialDate || dt.today();
     let time = initialTime || '';
-    ui.modal({
-      title: 'Añadir al día', size: 'sm',
-      html: `
-        <div style="display:flex;gap:8px;margin-bottom:14px">
-          <input type="date" id="qa-date" value="${date}" style="flex:1;padding:8px 10px;font-size:13px">
-          <input type="time" id="qa-time" value="${time}" style="width:110px;padding:8px 10px;font-size:13px">
+
+    const eventsToday = store.eventsOn(date);
+    const dateFormatted = dt.fmt(date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+    const eventsListHTML = eventsToday.length ? `
+      <div style="margin-bottom:16px">
+        <span class="fl" style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px;display:block">
+          Cosas programadas este día (toca para modificar):
+        </span>
+        <div style="display:flex;flex-direction:column;gap:7px;max-height:180px;overflow-y:auto;padding-right:2px">
+          ${eventsToday.map(e => `
+            <div class="quick-ev-item" data-ev-kind="${e.kind}" data-ev-id="${e.id}" style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surface-2);border-radius:12px;cursor:pointer;border-left:4px solid ${e.color};transition:0.15s">
+              <span style="font-size:16px">${e.emoji || '📌'}</span>
+              <div style="flex:1;min-width:0">
+                <b style="display:block;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${e.done ? 'text-decoration:line-through;opacity:0.6' : ''}">${esc(e.title)}</b>
+                <small class="muted" style="font-size:11.5px">${e.allDay ? 'Todo el día' : dt.fromMin(e.start) + ' – ' + dt.fromMin(e.end)}</small>
+              </div>
+              <span class="muted" style="font-size:12px;font-weight:600">Editar ✏️</span>
+            </div>
+          `).join('')}
         </div>
+      </div>
+    ` : `
+      <div style="padding:10px 12px;background:var(--surface-2);border-radius:12px;margin-bottom:16px;text-align:center">
+        <p class="muted" style="font-size:13px;margin:0">No hay nada programado todavía para este día.</p>
+      </div>
+    `;
+
+    ui.modal({
+      title: 'Organizar día 📅',
+      size: 'sm',
+      html: `
+        <div style="margin-bottom:14px">
+          <label class="fl" style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:4px;display:block">Fecha y hora a programar:</label>
+          <div style="display:flex;gap:8px">
+            <input type="date" id="qa-date" value="${date}" style="flex:1;padding:8px 10px;font-size:13px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;font-weight:600">
+            <input type="time" id="qa-time" value="${time}" style="width:110px;padding:8px 10px;font-size:13px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px">
+          </div>
+        </div>
+
+        ${eventsListHTML}
+
+        <span class="fl" style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px;display:block">
+          ¿Qué quieres añadir a este día?
+        </span>
         <div class="quick">
           <button type="button" data-k="task"><span>✅</span>Tarea</button>
           <button type="button" data-k="plan"><span>💞</span>Plan</button>
           <button type="button" data-k="meal"><span>🍝</span>Comida</button>
-        </div>`,
+        </div>
+      `,
       onMount(root, close) {
         const dInput = root.querySelector('#qa-date');
         const tInput = root.querySelector('#qa-time');
 
-        root.querySelectorAll('[data-k]').forEach(b => b.onclick = () => {
-          const k = b.dataset.k;
-          const chosenDate = dInput ? dInput.value : date;
-          const chosenTime = tInput ? tInput.value : time;
-          close();
-          setTimeout(() => {
-            if (k === 'task') task(null, { due: chosenDate, time: chosenTime || '' });
-            if (k === 'plan') plan(null, { date: chosenDate, time: chosenTime || '', status: 'planned' });
-            if (k === 'meal') {
-              const h = chosenTime ? dt.toMin(chosenTime) : null;
-              const type = h == null ? 'lunch' : h < 11 * 60 ? 'breakfast' : h < 16 * 60 ? 'lunch' : h < 19 * 60 ? 'snack' : 'dinner';
-              meal(null, { date: chosenDate, type, time: chosenTime || MEALS[type].time });
+        // Si cambian la fecha en el selector, recargar para mostrar los eventos de esa fecha elegida
+        if (dInput) {
+          dInput.addEventListener('change', () => {
+            const newDate = dInput.value;
+            const newTime = tInput ? tInput.value : '';
+            if (newDate && newDate !== date) {
+              close();
+              quickAdd(newDate, newTime);
             }
-          }, 200);
+          });
+        }
+
+        // Clic en cualquier evento existente de la lista para modificarlo
+        root.querySelectorAll('[data-ev-kind]').forEach(row => {
+          row.onclick = () => {
+            const k = row.dataset.evKind;
+            const id = row.dataset.evId;
+            close();
+            setTimeout(() => {
+              openEvent(k, id);
+            }, 180);
+          };
+        });
+
+        // Botones de añadir
+        root.querySelectorAll('[data-k]').forEach(b => {
+          b.onclick = () => {
+            const k = b.dataset.k;
+            const chosenDate = dInput ? dInput.value : date;
+            const chosenTime = tInput ? tInput.value : time;
+            close();
+            setTimeout(() => {
+              if (k === 'task') task(null, { due: chosenDate, time: chosenTime || '' });
+              if (k === 'plan') plan(null, { date: chosenDate, time: chosenTime || '', status: 'planned' });
+              if (k === 'meal') {
+                const h = chosenTime ? dt.toMin(chosenTime) : null;
+                const type = h == null ? 'lunch' : h < 11 * 60 ? 'breakfast' : h < 16 * 60 ? 'lunch' : h < 19 * 60 ? 'snack' : 'dinner';
+                meal(null, { date: chosenDate, type, time: chosenTime || MEALS[type].time });
+              }
+            }, 200);
+          };
         });
       },
     });
